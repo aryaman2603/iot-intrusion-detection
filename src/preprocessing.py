@@ -14,6 +14,56 @@ INPUT_FILE_PATH = os.path.join(DATA_DIR, RAW_CSV_NAME)
 OUTPUT_FILE_PATH = os.path.join(OUTPUT_DIR, "ciciot2023_clean.parquet")
 SAMPLE_FILE_PATH = os.path.join(SAMPLE_DIR, "sample_5_percent.parquet")
 
+label_mapping = {
+        
+        'DDOS-ICMP_FLOOD': 'DDoS',
+        'DDOS-UDP_FLOOD': 'DDoS',
+        'DDOS-TCP_FLOOD': 'DDoS',
+        'DDOS-PSHACK_FLOOD': 'DDoS',
+        'DDOS-RSTFINFLOOD': 'DDoS',
+        'DDOS-SYN_FLOOD': 'DDoS',
+        'DDOS-SYNONYMOUSIP_FLOOD': 'DDoS',
+        'DDOS-ICMP_FRAGMENTATION': 'DDoS',
+        'DDOS-UDP_FRAGMENTATION': 'DDoS',
+        'DDOS-ACK_FRAGMENTATION': 'DDoS',
+        'DDOS-HTTP_FLOOD': 'DDoS',
+        'DDOS-SLOWLORIS': 'DDoS',
+        
+        
+        'DOS-UDP_FLOOD': 'DoS',
+        'DOS-TCP_FLOOD': 'DoS',
+        'DOS-SYN_FLOOD': 'DoS',
+        'DOS-HTTP_FLOOD': 'DoS',
+        
+        
+        'MIRAI-GREETH_FLOOD': 'Mirai',
+        'MIRAI-UDPPLAIN': 'Mirai',
+        'MIRAI-GREIP_FLOOD': 'Mirai',
+        
+        
+        'VULNERABILITYSCAN': 'Recon',
+        'RECON-HOSTDISCOVERY': 'Recon',
+        'RECON-OSSCAN': 'Recon',
+        'RECON-PORTSCAN': 'Recon',
+        'RECON-PINGSWEEP': 'Recon',
+        
+        
+        'MITM-ARPSPOOFING': 'Spoofing',
+        'DNS_SPOOFING': 'Spoofing',
+        
+        
+        'DICTIONARYBRUTEFORCE': 'Web_BruteForce',
+        'BROWSERHIJACKING': 'Web_BruteForce',
+        'COMMANDINJECTION': 'Web_BruteForce',
+        'SQLINJECTION': 'Web_BruteForce',
+        'XSS': 'Web_BruteForce',
+        'BACKDOOR_MALWARE': 'Web_BruteForce',
+        'UPLOADING_ATTACK': 'Web_BruteForce',
+        
+        
+        'BENIGN': 'Benign'
+    }
+
 def process_single_csv():
     print(f"Connecting to raw file: {INPUT_FILE_PATH}")
     
@@ -23,11 +73,12 @@ def process_single_csv():
 
         .rename({"Label": "label"})
         
+        .with_columns(pl.col("label").replace(label_mapping).alias("label_category"))
         
-        .with_columns(pl.all().exclude("label").cast(pl.Float32))
+        .with_columns(pl.all().exclude("label", "label_category").cast(pl.Float32))
         
         
-        .filter(pl.all_horizontal(pl.all().exclude("label").is_finite()))
+        .filter(pl.all_horizontal(pl.all().exclude("label", "label_category").is_finite()))
         .drop_nulls()
     )
 
