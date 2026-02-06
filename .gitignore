@@ -16,3 +16,5 @@ wheels/
 
 .DS_Store
 .vscode/
+
+models/
