@@ -1,15 +1,116 @@
+"""
+Central configuration for the IoT Intrusion Detection project.
+All paths, hyperparameters, and constants live here.
+"""
 import os
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(PROJECT_ROOT, "data")
-MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
+# ── Paths ──────────────────────────────────────────────────────────────────
+BASE_DIR        = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR        = os.path.join(BASE_DIR, "data")
+RAW_DIR         = os.path.join(DATA_DIR, "raw")
+PROCESSED_DIR   = os.path.join(DATA_DIR, "processed")
+SAMPLE_DIR      = os.path.join(DATA_DIR, "sample")
+MODELS_DIR      = os.path.join(BASE_DIR, "models")
 
-TRAIN_DATA_PATH = os.path.join(DATA_DIR, "processed", "ciciot2023_clean.parquet")
-MODEL_PATH = os.path.join(MODELS_DIR, "xgb_model_v2.json")
-LABEL_ENCODER_PATH = os.path.join(MODELS_DIR, "label_encoder_v2.pkl")
+RAW_CSV_PATH         = os.path.join(RAW_DIR,       "Stratified_data.csv")
+PROCESSED_PATH       = os.path.join(PROCESSED_DIR, "ciciot2023_clean.parquet")
+SAMPLE_PATH          = os.path.join(SAMPLE_DIR,    "sample_5_percent.parquet")
+MODEL_PATH           = os.path.join(MODELS_DIR,    "lgbm_model.txt")
+LABEL_ENCODER_PATH   = os.path.join(MODELS_DIR,    "lgb_label_encoder.pkl")
+SCALER_PATH          = os.path.join(MODELS_DIR,    "scaler.pkl")
+FEATURES_PATH        = os.path.join(MODELS_DIR,    "selected_features.json")
+THRESHOLDS_PATH      = os.path.join(MODELS_DIR,    "thresholds.json")
+TEST_PROBA_PATH      = os.path.join(MODELS_DIR,    "test_proba.npy")
+TEST_LABELS_PATH     = os.path.join(MODELS_DIR,    "test_labels.npy")
 
-SELECTED_FEATURES = ['Header_Length', 'Protocol Type', 'Rate', 'fin_flag_number', 'syn_flag_number', 'rst_flag_number', 
-                     'psh_flag_number', 'ack_flag_number', 'ack_count', 'syn_count', 
-                     'rst_count', 'TCP', 'ICMP', 'Tot sum', 'Min', 'Max', 'AVG', 'Std', 'IAT', 'Number', 
-                     'HTTP', 'HTTPS', 'DNS', 'Telnet', 'SMTP', 'SSH', 'DHCP', 'ARP', 'IRC']
+# ── Label mapping (raw → category) ────────────────────────────────────────
+LABEL_MAPPING = {
+    "DDOS-ICMP_FLOOD":         "DDoS",
+    "DDOS-UDP_FLOOD":          "DDoS",
+    "DDOS-TCP_FLOOD":          "DDoS",
+    "DDOS-PSHACK_FLOOD":       "DDoS",
+    "DDOS-RSTFINFLOOD":        "DDoS",
+    "DDOS-SYN_FLOOD":          "DDoS",
+    "DDOS-SYNONYMOUSIP_FLOOD": "DDoS",
+    "DDOS-ICMP_FRAGMENTATION": "DDoS",
+    "DDOS-UDP_FRAGMENTATION":  "DDoS",
+    "DDOS-ACK_FRAGMENTATION":  "DDoS",
+    "DDOS-HTTP_FLOOD":         "DDoS",
+    "DDOS-SLOWLORIS":          "DDoS",
+    "DOS-UDP_FLOOD":           "DoS",
+    "DOS-TCP_FLOOD":           "DoS",
+    "DOS-SYN_FLOOD":           "DoS",
+    "DOS-HTTP_FLOOD":          "DoS",
+    "MIRAI-GREETH_FLOOD":      "Mirai",
+    "MIRAI-UDPPLAIN":          "Mirai",
+    "MIRAI-GREIP_FLOOD":       "Mirai",
+    "VULNERABILITYSCAN":       "Recon",
+    "RECON-HOSTDISCOVERY":     "Recon",
+    "RECON-OSSCAN":            "Recon",
+    "RECON-PORTSCAN":          "Recon",
+    "RECON-PINGSWEEP":         "Recon",
+    "MITM-ARPSPOOFING":        "Spoofing",
+    "DNS_SPOOFING":            "Spoofing",
+    "DICTIONARYBRUTEFORCE":    "Web_BruteForce",
+    "BROWSERHIJACKING":        "Web_BruteForce",
+    "COMMANDINJECTION":        "Web_BruteForce",
+    "SQLINJECTION":            "Web_BruteForce",
+    "XSS":                     "Web_BruteForce",
+    "BACKDOOR_MALWARE":        "Web_BruteForce",
+    "UPLOADING_ATTACK":        "Web_BruteForce",
+    "BENIGN":                  "Benign",
+}
 
+CLASSES = ["Benign", "DDoS", "DoS", "Mirai", "Recon", "Spoofing", "Web_BruteForce"]
+
+# ── Feature selection ──────────────────────────────────────────────────────
+# Top 25 features identified via LightGBM importance + RFECV on CICIoT2023.
+# These cover: flow rate, packet size, flag counts, IAT statistics.
+# Override by running src/feature_selection.py which writes FEATURES_PATH.
+DEFAULT_FEATURES = [
+    "flow_duration", "Header_Length", "Protocol Type",
+    "Duration", "Rate", "Srate", "Drate",
+    "fin_flag_number", "syn_flag_number", "rst_flag_number",
+    "psh_flag_number", "ack_flag_number", "ece_flag_number",
+    "cwr_flag_number", "ack_count", "syn_count", "fin_count",
+    "urg_count", "rst_count",
+    "HTTP", "HTTPS", "DNS", "Telnet", "SMTP", "SSH",
+    "IRC", "TCP", "UDP", "DHCP", "ARP", "ICMP",
+    "IPv", "LLC",
+    "Tot sum", "Min", "Max", "AVG", "Std", "Tot size",
+    "IAT", "Number", "Magnitue", "Radius", "Covariance",
+    "Variance", "Weight",
+]
+
+# ── Training hyperparameters ───────────────────────────────────────────────
+RANDOM_STATE  = 42
+TEST_SIZE     = 0.15
+VAL_SIZE      = 0.10   # fraction of train used for early stopping
+
+LGBM_PARAMS = {
+    "objective":        "multiclass",
+    "num_class":        len(CLASSES),
+    "metric":           "multi_logloss",
+    "boosting_type":    "gbdt",
+    "n_estimators":     1000,          # early stopping will determine actual count
+    "learning_rate":    0.05,
+    "num_leaves":       127,           # higher than default 31 — dataset is large
+    "max_depth":        -1,
+    "min_child_samples": 50,
+    "subsample":        0.8,
+    "colsample_bytree": 0.8,
+    "reg_alpha":        0.1,
+    "reg_lambda":       1.0,
+    "class_weight":     "balanced",    # handles imbalance automatically
+    "n_jobs":           -1,
+    "random_state":     RANDOM_STATE,
+    "verbose":          -1,
+}
+
+LGBM_FIT_PARAMS = {
+    "callbacks": [],   # populated in training.py with early_stopping + log_evaluation
+}
+
+N_CV_FOLDS = 3
+
+TRAIN_DATA_PATH = SAMPLE_PATH
