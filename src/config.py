@@ -15,8 +15,9 @@ MODELS_DIR      = os.path.join(BASE_DIR, "models")
 RAW_CSV_PATH         = os.path.join(RAW_DIR,       "Stratified_data.csv")
 PROCESSED_PATH       = os.path.join(PROCESSED_DIR, "ciciot2023_clean.parquet")
 SAMPLE_PATH          = os.path.join(SAMPLE_DIR,    "sample_5_percent.parquet")
+SAMPLE_20_PATH       = os.path.join(SAMPLE_DIR,    "sample_20_percent.parquet")
 MODEL_PATH           = os.path.join(MODELS_DIR,    "lgbm_model.txt")
-LABEL_ENCODER_PATH   = os.path.join(MODELS_DIR,    "lgb_label_encoder.pkl")
+LABEL_ENCODER_PATH   = os.path.join(MODELS_DIR,    "label_encoder.pkl")
 SCALER_PATH          = os.path.join(MODELS_DIR,    "scaler.pkl")
 FEATURES_PATH        = os.path.join(MODELS_DIR,    "selected_features.json")
 THRESHOLDS_PATH      = os.path.join(MODELS_DIR,    "thresholds.json")
@@ -88,29 +89,32 @@ TEST_SIZE     = 0.15
 VAL_SIZE      = 0.10   # fraction of train used for early stopping
 
 LGBM_PARAMS = {
-    "objective":        "multiclass",
-    "num_class":        len(CLASSES),
-    "metric":           "multi_logloss",
-    "boosting_type":    "gbdt",
-    "n_estimators":     1000,          # early stopping will determine actual count
-    "learning_rate":    0.05,
-    "num_leaves":       127,           # higher than default 31 — dataset is large
-    "max_depth":        -1,
-    "min_child_samples": 50,
-    "subsample":        0.8,
-    "colsample_bytree": 0.8,
-    "reg_alpha":        0.1,
-    "reg_lambda":       1.0,
-    "class_weight":     "balanced",    # handles imbalance automatically
-    "n_jobs":           -1,
-    "random_state":     RANDOM_STATE,
-    "verbose":          -1,
+    "objective":         "multiclass",
+    "num_class":         len(CLASSES),
+    "metric":            "multi_logloss",
+    "boosting_type":     "gbdt",
+    "n_estimators":      500,          # reduced from 1000 — early stopping handles the rest
+    "learning_rate":     0.1,          # increased from 0.05 — faster convergence on M2
+    "num_leaves":        63,           # reduced from 127 — less memory, faster per tree
+    "max_depth":         7,
+    "min_child_samples": 100,          # increased — prevents overfitting on minority classes
+    "subsample":         0.7,
+    "subsample_freq":    1,            # required for subsample to take effect
+    "colsample_bytree":  0.7,
+    "reg_alpha":         0.1,
+    "reg_lambda":        1.0,
+    "class_weight":      "balanced",
+    "n_jobs":            -1,           # uses all M2 Pro performance cores
+    "random_state":      RANDOM_STATE,
+    "verbose":           -1,
 }
 
 LGBM_FIT_PARAMS = {
     "callbacks": [],   # populated in training.py with early_stopping + log_evaluation
 }
 
-N_CV_FOLDS = 3
+N_CV_FOLDS = 3   # switch to 5 for final production run
 
-TRAIN_DATA_PATH = SAMPLE_PATH
+# ── Active training data path ──────────────────────────────────────────────
+# Use SAMPLE_PATH during development (fast), PROCESSED_PATH for final model.
+TRAIN_DATA_PATH = SAMPLE_20_PATH    # ~1.6M rows, good balance of speed vs coverage
