@@ -17,4 +17,9 @@ wheels/
 .DS_Store
 .vscode/
 
-models/
+models/xgb_model.json
+models/xgb_model_v2.json
+models/test_proba.npy
+models/test_labels.npy
+models/label_encoder.pkl
+models/label_encoder_v2.pkl
